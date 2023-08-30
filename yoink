@@ -1,0 +1,69 @@
+#!/bin/bash
+RED=`tput setaf 1`
+BLUE=`tput setaf 4`
+ENDCOLOR=`tput sgr0`
+GREEN=`tput setaf 2`
+TICK="[$GREEN+$ENDCOLOR] "
+TICK_ERROR="[$RED!$ENDCOLOR] "
+#search_location="./"
+
+
+
+extract_attachments(){
+    # Attempts to find file in provided directory
+    found_file=$(find $search_location -name "$selected_file") 
+    if [[  -z  $found_file ]] ; then
+        echo $TICK_ERROR $RED"Error: $BLUE$selected_file$RED not found in $BLUE$search_location" 
+        exit 1
+    fi
+    
+    dir_name=$(echo "$selected_file" | sed s/.md//g)
+
+    mkdir -p ./"$dir_name"_extracted
+
+    # Finds all the attachments and replaces spaces with -
+    # Otherwise bash for loops split things in dumb ways
+    found_attachment=$(grep -oP  "(?<=\[\[).*(?=\]\])" "$found_file" | sed 's/ /-/g' )
+    echo $TICK"Found file and placed in $GREEN./"$dir_name"_extracted$ENDCOLOR"
+
+    # For each 
+    for attachment in $found_attachment;do
+        attachment=$(echo $attachment |  sed 's/-/ /g')
+
+        #Place the markdown file in the correct folder
+        find $search_location -name "$selected_file"  -exec cp {} ./"$dir_name"_extracted \;
+
+        # Place attachments in the correct folder
+        find $search_location -name "$attachment" -exec cp {} ./"$dir_name"_extracted \;
+
+    done
+}
+
+
+
+
+# Get arguments
+while getopts "f: l:" flag
+do
+    case "${flag}" in
+    f) selected_file=${OPTARG}
+    ;;
+    l) search_location=${OPTARG}
+    ;;
+    esac
+done
+
+
+# Uh this is a terrible way to do argument validation but :shrug:
+if [[ $# -eq 0 ]] ; then
+    echo $TICK_ERROR'Error: No arguments detected'
+    echo $TICK_ERROR'Usage:'$GREEN' yoink -f "note_to_find.md" -l "/path/to/vault/"'
+    exit 1
+elif [ ! "$selected_file" ] || [ ! "$search_location" ]; then
+    echo $TICK_ERROR'Usage:'$GREEN' yoink -f "note_to_find.md" -l "/path/to/vault/"'
+    echo $TICK_ERROR'Arguments -f and -l must be provided'
+    exit 1
+else
+    extract_attachments
+fi
+
