@@ -5,9 +5,10 @@ ENDCOLOR=`tput sgr0`
 GREEN=`tput setaf 2`
 TICK="[$GREEN+$ENDCOLOR] "
 TICK_ERROR="[$RED!$ENDCOLOR] "
-#search_location="./"
 
-
+usage(){
+    echo $TICK_ERROR'Usage:'$GREEN' yoink -f <note_to_find.md> -l </path/to/vault/>'
+}
 
 extract_attachments(){
     # Attempts to find file in provided directory
@@ -23,7 +24,7 @@ extract_attachments(){
 
     # Finds all the attachments and replaces spaces with -
     # Otherwise bash for loops split things in dumb ways
-    found_attachment=$(grep -oP  "(?<=\[\[).*(?=\]\])" "$found_file" | sed 's/ /-/g' )
+    found_attachment=$(grep -oP  "(?<=\[\[).*(?=\]\])" "$found_file" | sed 's/ /-/g')
     echo $TICK"Found file and placed in $GREEN./"$dir_name"_extracted$ENDCOLOR"
 
     # For each 
@@ -35,35 +36,43 @@ extract_attachments(){
 
         # Place attachments in the correct folder
         find $search_location -name "$attachment" -exec cp {} ./"$dir_name"_extracted \;
-
     done
 }
 
+check_args(){
+    # Ensure file has markdown extension
+    if [[ ! $selected_file == *".md" ]]; then
+        echo $TICK"Fixed your search by changing $GREEN$selected_file$ENDCOLOR to $GREEN$selected_file.md$ENDCOLOR"
+        selected_file="${selected_file}.md"
+    fi
+    # Ensure directory exist 
+    test -d $search_location || { echo "$TICK_ERROR$RED$search_location$ENDCOLOR not found" ; exit 1; }
 
-
+}
 
 # Get arguments
-while getopts "f: l:" flag
+while getopts ":f:l:h" flag
 do
     case "${flag}" in
     f) selected_file=${OPTARG}
-    ;;
+       ;;
     l) search_location=${OPTARG}
-    ;;
+       ;;
+    h) usage 
+       ;;
+    :) usage
+       exit 1
+       ;;
+   \?) usage 
+       exit 1
     esac
 done
 
-
-# Uh this is a terrible way to do argument validation but :shrug:
-if [[ $# -eq 0 ]] ; then
-    echo $TICK_ERROR'Error: No arguments detected'
-    echo $TICK_ERROR'Usage:'$GREEN' yoink -f "note_to_find.md" -l "/path/to/vault/"'
+if [ -z  ${selected_file+x} ] || [ -z  ${search_location+x} ]; then
+    usage
     exit 1
-elif [ ! "$selected_file" ] || [ ! "$search_location" ]; then
-    echo $TICK_ERROR'Usage:'$GREEN' yoink -f "note_to_find.md" -l "/path/to/vault/"'
-    echo $TICK_ERROR'Arguments -f and -l must be provided'
-    exit 1
-else
-    extract_attachments
 fi
 
+
+check_args
+extract_attachments
